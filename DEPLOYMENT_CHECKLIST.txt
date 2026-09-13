@@ -1,0 +1,79 @@
+╔════════════════════════════════════════════════════════════════╗
+║     SentinelOneWay - FREE Deployment Checklist               ║
+║              Render + Vercel (No Credit Card)                 ║
+╚════════════════════════════════════════════════════════════════╝
+
+STEP 1: PUSH TO GITHUB
+□ Go to https://github.com/new
+□ Create repository: "SentinelOneWay"
+□ Make it PUBLIC (required for free Render)
+□ Run in terminal:
+    cd C:\Users\Vimalraj\SentinelOneWay
+    git init
+    git add .
+    git commit -m "Ready for deployment"
+    git remote add origin https://github.com/YOUR-USERNAME/SentinelOneWay.git
+    git branch -M main
+    git push -u origin main
+
+STEP 2: DEPLOY BACKEND (Render)
+□ Go to https://render.com/
+□ Sign up with GitHub
+□ Click "New +" → "Web Service"
+□ Connect your SentinelOneWay repo
+□ Fill settings:
+    Name: sentineloneway-backend
+    Root Directory: backend
+    Runtime: Python 3
+    Build: pip install -r requirements.txt
+    Start: uvicorn main:app --host 0.0.0.0 --port $PORT
+    Plan: FREE
+□ Add Environment Variables:
+    PYTHON_VERSION = 3.11
+    DATABASE_URL = sqlite:///./sentineloneway.db
+    PYTHONUNBUFFERED = 1
+□ Click "Create Web Service"
+□ Wait 5-10 minutes
+□ Copy URL: https://sentineloneway-backend.onrender.com
+
+STEP 3: DEPLOY FRONTEND (Vercel)
+□ Go to https://vercel.com/signup
+□ Sign up with GitHub
+□ Click "Add New..." → "Project"
+□ Import SentinelOneWay repo
+□ Fill settings:
+    Framework: Vite (auto-detected)
+    Root Directory: frontend
+    Build: npm run build
+    Output: dist
+□ Add Environment Variable:
+    VITE_API_BASE_URL = https://sentineloneway-backend.onrender.com
+    (use YOUR backend URL from step 2)
+□ Click "Deploy"
+□ Wait 2-3 minutes
+□ Copy URL: https://sentinel-one-way.vercel.app
+
+STEP 4: TEST
+□ Open backend: https://sentineloneway-backend.onrender.com/health
+□ Should see: {"status":"healthy"}
+□ Open frontend: https://sentinel-one-way.vercel.app
+□ Wait 30 seconds if loading (backend waking up)
+□ Check all pages work
+□ Verify data loads
+
+╔════════════════════════════════════════════════════════════════╗
+║                        YOU'RE LIVE! 🎉                         ║
+╚════════════════════════════════════════════════════════════════╝
+
+Your app: https://sentinel-one-way.vercel.app
+Cost: $0/month forever
+
+Next: Share your live app link! 🚀
+
+⚠️ IMPORTANT NOTES:
+- Backend sleeps after 15 min → Takes 30 sec to wake
+- Frontend is ALWAYS fast (no sleep)
+- To keep backend awake 24/7: Use UptimeRobot (free)
+- Auto-deploys on every git push!
+
+Need help? Check DEPLOYMENT_STEPS.md for detailed guide!

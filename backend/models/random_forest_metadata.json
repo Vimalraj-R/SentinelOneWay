@@ -1,0 +1,274 @@
+{
+  "model_type": "RandomForestClassifier",
+  "training_date": "2026-09-13T20:37:59.142143",
+  "dataset_path": "datasets/network_flows.csv",
+  "total_samples": 2850,
+  "training_samples": 2280,
+  "test_samples": 570,
+  "num_features": 30,
+  "feature_names": [
+    "packets_per_second",
+    "bytes_per_second",
+    "average_packet_size",
+    "flow_duration",
+    "packet_count",
+    "byte_count",
+    "syn_count",
+    "ack_count",
+    "syn_ack_ratio",
+    "dns_query_length",
+    "dns_entropy",
+    "dns_digit_ratio",
+    "dns_unique_char_ratio",
+    "dns_subdomain_count",
+    "inbound_bytes",
+    "outbound_bytes",
+    "outbound_inbound_ratio",
+    "is_tcp",
+    "is_udp",
+    "is_icmp",
+    "unique_destination_ports",
+    "unique_destination_hosts",
+    "connection_rate",
+    "fanout_score",
+    "destination_concentration",
+    "aggregate_packet_rate",
+    "mean_inter_arrival_time",
+    "inter_arrival_std",
+    "periodicity_score",
+    "repeated_destination_count"
+  ],
+  "class_names": {
+    "0": "NORMAL",
+    "1": "SYN_FLOOD",
+    "2": "PORT_SCAN",
+    "3": "C2_BEACON",
+    "4": "DNS_TUNNEL",
+    "5": "DATA_EXFILTRATION"
+  },
+  "label_mapping": {
+    "0": "NORMAL",
+    "1": "SYN_FLOOD",
+    "2": "PORT_SCAN",
+    "3": "C2_BEACON",
+    "4": "DNS_TUNNEL",
+    "5": "DATA_EXFILTRATION"
+  },
+  "hyperparameters": {
+    "n_estimators": 100,
+    "max_depth": 20,
+    "min_samples_split": 5,
+    "min_samples_leaf": 2,
+    "random_state": 42
+  },
+  "cross_validation": {
+    "cv_accuracy_mean": 1.0,
+    "cv_accuracy_std": 0.0,
+    "cv_scores": [
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
+  "test_metrics": {
+    "accuracy": 1.0,
+    "precision_macro": 1.0,
+    "recall_macro": 1.0,
+    "f1_macro": 1.0,
+    "precision_weighted": 1.0,
+    "recall_weighted": 1.0,
+    "f1_weighted": 1.0,
+    "classification_report": {
+      "NORMAL": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 150.0
+      },
+      "SYN_FLOOD": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 100.0
+      },
+      "PORT_SCAN": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 100.0
+      },
+      "C2_BEACON": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 80.0
+      },
+      "DNS_TUNNEL": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 80.0
+      },
+      "DATA_EXFILTRATION": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 60.0
+      },
+      "accuracy": 1.0,
+      "macro avg": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 570.0
+      },
+      "weighted avg": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 570.0
+      }
+    },
+    "confusion_matrix": [
+      [
+        150,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        100,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        100,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        80,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        80,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        60
+      ]
+    ],
+    "avg_confidence": 0.998962959818902
+  },
+  "feature_importance": [
+    {
+      "feature": "inbound_bytes",
+      "importance": 0.09996867397378689
+    },
+    {
+      "feature": "outbound_bytes",
+      "importance": 0.08207477140015136
+    },
+    {
+      "feature": "byte_count",
+      "importance": 0.08057003373537407
+    },
+    {
+      "feature": "flow_duration",
+      "importance": 0.07532585561385885
+    },
+    {
+      "feature": "average_packet_size",
+      "importance": 0.06751303729497155
+    },
+    {
+      "feature": "outbound_inbound_ratio",
+      "importance": 0.06644112171114604
+    },
+    {
+      "feature": "packet_count",
+      "importance": 0.04247020778487685
+    },
+    {
+      "feature": "syn_count",
+      "importance": 0.04124408666710829
+    },
+    {
+      "feature": "destination_concentration",
+      "importance": 0.039373229941854514
+    },
+    {
+      "feature": "unique_destination_hosts",
+      "importance": 0.03915318397438669
+    },
+    {
+      "feature": "syn_ack_ratio",
+      "importance": 0.03888853808092432
+    },
+    {
+      "feature": "unique_destination_ports",
+      "importance": 0.03880248875494959
+    },
+    {
+      "feature": "ack_count",
+      "importance": 0.03854668494886702
+    },
+    {
+      "feature": "fanout_score",
+      "importance": 0.03615338705803098
+    },
+    {
+      "feature": "aggregate_packet_rate",
+      "importance": 0.03260608498297172
+    },
+    {
+      "feature": "connection_rate",
+      "importance": 0.02611778933255872
+    },
+    {
+      "feature": "packets_per_second",
+      "importance": 0.020867464337596932
+    },
+    {
+      "feature": "bytes_per_second",
+      "importance": 0.018678943332121934
+    },
+    {
+      "feature": "mean_inter_arrival_time",
+      "importance": 0.018442345458812973
+    },
+    {
+      "feature": "repeated_destination_count",
+      "importance": 0.015801538171666057
+    }
+  ],
+  "warnings": [
+    "Model trained on synthetic data only",
+    "Performance on real network traffic may differ",
+    "Requires validation on production data before deployment",
+    "False positive rate on real traffic unknown"
+  ]
+}

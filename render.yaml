@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: sentineloneway-backend
+    runtime: python
+    buildCommand: cd backend && pip install -r requirements.txt
+    startCommand: cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: DATABASE_URL
+        value: sqlite:///./sentineloneway.db
+      - key: PYTHONUNBUFFERED
+        value: 1

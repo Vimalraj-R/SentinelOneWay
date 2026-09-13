@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: sentineloneway-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      # Persist database
+      - ./backend/sentineloneway.db:/app/sentineloneway.db
+      # Persist ML models
+      - ./backend/models:/app/models
+      # Persist datasets
+      - ./backend/datasets:/app/datasets
+    environment:
+      - DATABASE_URL=sqlite:///./sentineloneway.db
+      - PYTHONUNBUFFERED=1
+      - LOG_LEVEL=info
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - sentineloneway-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: sentineloneway-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      - NGINX_HOST=localhost
+      - NGINX_PORT=80
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    networks:
+      - sentineloneway-network
+
+networks:
+  sentineloneway-network:
+    driver: bridge
+    name: sentineloneway-network
+
+volumes:
+  backend-data:
+    driver: local

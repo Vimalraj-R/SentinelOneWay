@@ -1,0 +1,80 @@
+{
+  "model_type": "IsolationForest",
+  "training_date": "2026-09-13T20:45:05.811817",
+  "dataset_path": "datasets/network_flows.csv",
+  "training_samples": 750,
+  "trained_on_normal_only": true,
+  "num_features": 30,
+  "feature_names": [
+    "packets_per_second",
+    "bytes_per_second",
+    "average_packet_size",
+    "flow_duration",
+    "packet_count",
+    "byte_count",
+    "syn_count",
+    "ack_count",
+    "syn_ack_ratio",
+    "dns_query_length",
+    "dns_entropy",
+    "dns_digit_ratio",
+    "dns_unique_char_ratio",
+    "dns_subdomain_count",
+    "inbound_bytes",
+    "outbound_bytes",
+    "outbound_inbound_ratio",
+    "is_tcp",
+    "is_udp",
+    "is_icmp",
+    "unique_destination_ports",
+    "unique_destination_hosts",
+    "connection_rate",
+    "fanout_score",
+    "destination_concentration",
+    "aggregate_packet_rate",
+    "mean_inter_arrival_time",
+    "inter_arrival_std",
+    "periodicity_score",
+    "repeated_destination_count"
+  ],
+  "hyperparameters": {
+    "n_estimators": 100,
+    "contamination": 0.001,
+    "max_samples": 256,
+    "random_state": 42
+  },
+  "evaluation_metrics": {
+    "accuracy": 0.8656140350877193,
+    "precision": 0.9994182664339732,
+    "recall": 0.8180952380952381,
+    "f1_score": 0.8997119664833726,
+    "confusion_matrix": [
+      [
+        749,
+        1
+      ],
+      [
+        382,
+        1718
+      ]
+    ],
+    "normal_score_mean": -0.4348824062323588,
+    "normal_score_std": 0.04548355133826372,
+    "attack_score_mean": -0.6696961572125394,
+    "attack_score_std": 0.03477152501111285
+  },
+  "usage_notes": [
+    "Trained primarily on normal traffic patterns",
+    "Identifies deviations from normal behavior",
+    "Does not classify specific threat types",
+    "Complements supervised classification",
+    "Higher anomaly scores indicate greater deviation from normal",
+    "Not all anomalies are attacks - investigate before responding"
+  ],
+  "warnings": [
+    "Trained on synthetic data only",
+    "May produce false positives on unusual but benign traffic",
+    "Requires threshold tuning for production deployment",
+    "Should be used in conjunction with supervised classifiers"
+  ]
+}
