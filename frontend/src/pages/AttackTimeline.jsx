@@ -1,7 +1,7 @@
 /**
  * Attack Timeline page showing correlated multi-stage attacks
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApi } from '../hooks/useApi';
 import { Shield, Clock, AlertTriangle, ChevronRight, Activity } from 'lucide-react';
@@ -17,6 +17,11 @@ export default function AttackTimeline() {
   const { data: incidentsData, loading, error, refetch } = useApi(
     () => fetchApi('/api/incidents/?limit=50')
   );
+
+  useEffect(() => {
+    const refresh = setInterval(refetch, 10000);
+    return () => clearInterval(refresh);
+  }, []); // Keep the timeline polling interval stable.
 
   // Fetch incident detail when selected
   const { data: incidentDetail, loading: detailLoading } = useApi(

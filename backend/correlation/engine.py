@@ -80,6 +80,18 @@ class CorrelationEngine:
         """Initialize correlation engine."""
         pass
 
+    @staticmethod
+    def _normalize_threat_class(threat_class: str) -> str:
+        """Normalize display labels and detector labels to one lookup key."""
+        normalized = (threat_class or '').strip().upper().replace('-', '_').replace(' ', '_')
+        aliases = {
+            'SYN_FLOOD_ATTACK': 'SYN_FLOOD',
+            'C2_BEACONING': 'C2_BEACON',
+            'DNS_TUNNELING': 'DNS_TUNNEL',
+            'DATA_EXFIL': 'DATA_EXFILTRATION',
+        }
+        return aliases.get(normalized, normalized)
+
     def correlate_alerts(self, alerts: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
         Correlate alerts into incidents.
@@ -279,8 +291,8 @@ class CorrelationEngine:
         Returns:
             Progression score (0.0-1.0)
         """
-        alert_threat = alert.get('threat_class', '')
-        group_threats = [a.get('threat_class', '') for a in group]
+        alert_threat = self._normalize_threat_class(alert.get('threat_class', ''))
+        group_threats = [self._normalize_threat_class(a.get('threat_class', '')) for a in group]
 
         # Map threats to stages
         alert_stage = self.THREAT_TO_STAGE.get(alert_threat)
@@ -353,7 +365,8 @@ class CorrelationEngine:
         seen_stages = set()
         for alert in group:
             threat_class = alert.get('threat_class', '')
-            stage = self.THREAT_TO_STAGE.get(threat_class)
+            normalized_threat = self._normalize_threat_class(threat_class)
+            stage = self.THREAT_TO_STAGE.get(normalized_threat)
             if stage and stage not in seen_stages:
                 attack_stages.append({
                     'stage': stage,
