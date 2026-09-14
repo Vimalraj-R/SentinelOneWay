@@ -9,19 +9,14 @@ import { useState } from 'react';
 import { ChevronDown, ChevronUp, Brain, BarChart3, AlertCircle } from 'lucide-react';
 import { useApi } from '../../hooks/useApi';
 import LoadingSpinner from '../common/LoadingSpinner';
+import { fetchApi } from '../../services/api';
 
 export default function ExplainableAI({ alertId }) {
   const [showTechnical, setShowTechnical] = useState(false);
 
   // Fetch explanation from API
   const { data: explanation, loading, error } = useApi(
-    () => fetch(`http://localhost:8000/api/explanations/alert/${alertId}?top_n=10`)
-      .then(res => {
-        if (!res.ok) {
-          throw new Error(`HTTP error! status: ${res.status}`);
-        }
-        return res.json();
-      }),
+    () => fetchApi(`/api/explanations/alert/${alertId}?top_n=10`),
     [alertId]
   );
 

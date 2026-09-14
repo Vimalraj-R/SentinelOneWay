@@ -23,7 +23,7 @@ class ApiError extends Error {
 /**
  * Generic fetch wrapper with error handling
  */
-async function fetchApi(endpoint, options = {}) {
+export async function fetchApi(endpoint, options = {}) {
   const url = `${API_BASE_URL}${endpoint}`;
 
   try {

@@ -7,6 +7,7 @@ import { useApi } from '../hooks/useApi';
 import { Shield, Clock, AlertTriangle, ChevronRight, Activity } from 'lucide-react';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import ErrorMessage from '../components/common/ErrorMessage';
+import { fetchApi } from '../services/api';
 
 export default function AttackTimeline() {
   const navigate = useNavigate();
@@ -14,15 +15,13 @@ export default function AttackTimeline() {
 
   // Fetch incidents
   const { data: incidentsData, loading, error, refetch } = useApi(
-    () => fetch('http://localhost:8000/api/incidents/?limit=50')
-      .then(res => res.ok ? res.json() : Promise.reject('Failed to fetch'))
+    () => fetchApi('/api/incidents/?limit=50')
   );
 
   // Fetch incident detail when selected
   const { data: incidentDetail, loading: detailLoading } = useApi(
     selectedIncident
-      ? () => fetch(`http://localhost:8000/api/incidents/${selectedIncident}`)
-          .then(res => res.ok ? res.json() : Promise.reject('Failed to fetch'))
+        ? () => fetchApi(`/api/incidents/${selectedIncident}`)
       : null,
     [selectedIncident]
   );

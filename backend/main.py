@@ -45,6 +45,8 @@ cors_origins = [
     if origin.strip()
 ]
 cors_origins.extend([
+    "https://sentinel-one-way-mvp.vercel.app",
+    "https://sentinel-one-way-mvp-git-main-vimalraj-rs-projects.vercel.app",
     "http://localhost:5173",
     "http://localhost:5174",
     "http://localhost:3000",
@@ -56,6 +58,7 @@ cors_origins.extend([
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
+    allow_origin_regex=r"https://sentinel-one-way(?:-mvp)?(?:-[a-z0-9-]+)*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],  # Allow all HTTP methods
     allow_headers=["*"],  # Allow all headers

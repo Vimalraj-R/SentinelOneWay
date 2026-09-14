@@ -5,6 +5,7 @@
 import { useState, useEffect } from 'react';
 import { HeartPulse, CheckCircle, XCircle, AlertCircle, Database, Cpu, HardDrive, Wifi } from 'lucide-react';
 import LoadingSpinner from '../components/common/LoadingSpinner';
+import { fetchApi } from '../services/api';
 
 export default function SystemHealth() {
   const [health, setHealth] = useState(null);
@@ -18,13 +19,15 @@ export default function SystemHealth() {
 
   const fetchHealth = async () => {
     try {
-      const response = await fetch('http://localhost:8000/health');
-      if (!response.ok) throw new Error('Backend not responding');
-      const data = await response.json();
+      const data = await fetchApi('/health');
 
       // Fetch additional stats
-      const statsResponse = await fetch('http://localhost:8000/api/dashboard/stats');
-      const stats = statsResponse.ok ? await statsResponse.json() : {};
+      let stats = {};
+      try {
+        stats = await fetchApi('/api/dashboard/stats');
+      } catch {
+        // The health page can still show backend status when optional stats are unavailable.
+      }
 
       setHealth({
         backend: {

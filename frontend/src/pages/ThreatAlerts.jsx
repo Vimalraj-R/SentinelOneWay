@@ -9,6 +9,7 @@ import PassiveMonitoringBanner from '../components/common/PassiveMonitoringBanne
 import SeverityBadge from '../components/common/SeverityBadge';
 import EmptyState from '../components/common/EmptyState';
 import LoadingSpinner from '../components/common/LoadingSpinner';
+import { fetchApi } from '../services/api';
 
 export default function ThreatAlerts() {
   const [alerts, setAlerts] = useState([]);
@@ -27,9 +28,7 @@ export default function ThreatAlerts() {
   const fetchAlerts = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:8000/api/alerts/recent?limit=100');
-      if (!response.ok) throw new Error('Failed to fetch alerts');
-      const data = await response.json();
+      const data = await fetchApi('/api/alerts/recent?limit=100');
       setAlerts(data);
     } catch (err) {
       setError(err.message);

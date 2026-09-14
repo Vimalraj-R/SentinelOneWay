@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react';
 import { Activity, Wifi, WifiOff, RefreshCw, Download, Upload } from 'lucide-react';
 import PassiveMonitoringBanner from '../components/common/PassiveMonitoringBanner';
 import LoadingSpinner from '../components/common/LoadingSpinner';
+import { fetchApi } from '../services/api';
 
 export default function LiveTraffic() {
   const [metrics, setMetrics] = useState(null);
@@ -26,9 +27,7 @@ export default function LiveTraffic() {
 
   const fetchMetrics = async () => {
     try {
-      const response = await fetch('http://localhost:8000/api/metrics/current');
-      if (!response.ok) throw new Error('Failed to fetch metrics');
-      const data = await response.json();
+      const data = await fetchApi('/api/metrics/current');
 
       // Transform backend data to match frontend expectations
       const transformedMetrics = {

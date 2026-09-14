@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Shield, Bell, CheckCircle, AlertTriangle, Clock, X } from 'lucide-react';
+import { fetchApi } from '../../services/api';
 
 export default function TopBar() {
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -22,15 +23,12 @@ export default function TopBar() {
   useEffect(() => {
     const fetchNotifications = async () => {
       try {
-        const response = await fetch('http://localhost:8000/api/alerts/recent?limit=10');
-        if (response.ok) {
-          const data = await response.json();
-          setNotifications(data);
-          // Count alerts from last 5 minutes as "unread"
-          const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
-          const unread = data.filter(alert => new Date(alert.timestamp) > fiveMinutesAgo).length;
-          setUnreadCount(unread);
-        }
+        const data = await fetchApi('/api/alerts/recent?limit=10');
+        setNotifications(data);
+        // Count alerts from last 5 minutes as "unread"
+        const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+        const unread = data.filter(alert => new Date(alert.timestamp) > fiveMinutesAgo).length;
+        setUnreadCount(unread);
       } catch (error) {
         console.error('Failed to fetch notifications:', error);
       }
