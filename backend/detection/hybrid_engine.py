@@ -116,8 +116,8 @@ class HybridDetectionEngine:
             ml_threshold
         )
 
-        # Calculate risk score
-        risk_score = self._calculate_risk_score(
+        # Calculate risk score and component breakdown
+        risk_score, risk_breakdown = self._calculate_risk_score(
             ml_result,
             anomaly_result,
             rule_detections,
@@ -317,93 +317,134 @@ class HybridDetectionEngine:
                              ml_result: Dict[str, Any],
                              anomaly_result: Dict[str, Any],
                              rule_detections: Dict[str, Optional[Detection]],
-                             threat_class: str) -> int:
+                             threat_class: str) -> Tuple[int, Dict[str, int]]:
         """
-        Calculate transparent risk score (0-100).
+        Calculate transparent risk score (0-100) with component breakdown.
 
-        Risk Scoring Logic:
+        Risk Score Components:
 
-        1. Base Risk (0-60):
-           - ML confidence × 60
-           - If threat_class is attack: use ML confidence directly
-           - If UNKNOWN_ANOMALY: use anomaly_score / 100 × 60
+        1. BASE_RISK (0-50): Primary classification risk
+           - Known attack: ML confidence × 50
+           - Unknown anomaly: anomaly_score × 0.5
+           - Normal/Suspicious: reduced baseline
 
-        2. Anomaly Boost (+0 to +20):
-           - If anomaly_score ≥ 80: +20
-           - If anomaly_score ≥ 60: +15
-           - If anomaly_score ≥ 40: +10
-           - Otherwise: +0
+        2. ANOMALY_BOOST (0-20): Anomaly score adjustment
+           - ≥80: +20 (highly anomalous)
+           - ≥60: +15 (notable anomaly)
+           - ≥40: +10 (mild anomaly)
+           - <40: +0 (within normal bounds)
 
-        3. Rule Agreement Boost (+0 to +15):
-           - Each rule detection adds: rule_confidence × 5
-           - Cap at +15
+        3. RULE_CONFIRMATION (0-15): Rule-based detector agreement
+           - Each triggered rule adds: confidence × 5
+           - Maximum +15 total
 
-        4. Multi-Detector Boost (+0 to +5):
+        4. DETECTOR_DIVERSITY (0-5): Number of independent methods agreeing
            - 2 detectors: +2
            - 3 detectors: +4
            - 4+ detectors: +5
+           - Anomaly adds 1 to detector count
+           - High ML confidence adds 1 to detector count
 
         Total: Capped at 100
 
         Args:
-            ml_result: ML classifier output
-            anomaly_result: Anomaly detector output
-            rule_detections: Rule-based detections
+            ml_result: ML classifier output with 'confidence' and 'threat_class'
+            anomaly_result: Anomaly detector output with 'anomaly_score' and 'is_anomaly'
+            rule_detections: Rule-based detection results
             threat_class: Final classified threat class
 
         Returns:
-            Risk score (0-100)
+            Tuple of (total_risk_score, component_breakdown) where breakdown maps:
+            - 'base_risk': risk from primary classification (0-50)
+            - 'anomaly_boost': anomaly score contribution (0-20)
+            - 'rule_confirmation': rule agreement contribution (0-15)
+            - 'detector_diversity': multi-detector contribution (0-5)
         """
-        risk = 0.0
+        # Initialize component trackers
+        base_risk = 0.0
+        anomaly_boost = 0
+        rule_confirmation = 0
+        detector_diversity = 0
 
-        # 1. Base risk from primary classification
-        if threat_class in ["NORMAL", "SUSPICIOUS"]:
-            # Use ML confidence for normal, lower for suspicious
+        # === COMPONENT 1: BASE RISK (0-50) ===
+        # Determined by the primary classification method
+        if threat_class == "NORMAL":
+            # Low risk for normal traffic - base confidence reduces risk
             base_confidence = ml_result['confidence']
-            if threat_class == "SUSPICIOUS":
-                risk += base_confidence * 50  # 0-50 for suspicious
-            else:
-                risk += (1.0 - base_confidence) * 20  # Low risk for normal
-        elif threat_class == "UNKNOWN_ANOMALY":
-            # Base risk from anomaly score
-            risk += anomaly_result['anomaly_score'] * 0.6  # 0-60
-        else:
-            # Known attack - base risk from ML confidence
-            risk += ml_result['confidence'] * 60  # 0-60
+            base_risk = (1.0 - base_confidence) * 20  # 0-20 range
 
-        # 2. Anomaly boost
+        elif threat_class == "SUSPICIOUS":
+            # Moderate risk for suspicious traffic
+            base_confidence = ml_result['confidence']
+            base_risk = min(50, base_confidence * 30)  # 0-30 range, capped at 50
+
+        elif threat_class == "UNKNOWN_ANOMALY":
+            # Risk derived from anomaly score
+            anomaly_score = anomaly_result['anomaly_score']
+            base_risk = anomaly_score * 0.5  # 0-50 range (score 100 → 50 risk)
+
+        else:
+            # Known attack class (SYN_FLOOD, PORT_SCAN, C2_BEACON, etc.)
+            # Base risk from ML confidence: higher confidence = higher risk
+            base_confidence = ml_result['confidence']
+            base_risk = min(50, base_confidence * 50)  # 0-50 range
+
+        # === COMPONENT 2: ANOMALY BOOST (0-20) ===
+        # Additional risk if the anomaly score indicates significant deviation
         anomaly_score = anomaly_result['anomaly_score']
         if anomaly_score >= 80:
-            risk += 20
+            anomaly_boost = 20
         elif anomaly_score >= 60:
-            risk += 15
+            anomaly_boost = 15
         elif anomaly_score >= 40:
-            risk += 10
+            anomaly_boost = 10
+        # else: anomaly_boost = 0 (already captured in base_risk for UNKNOWN_ANOMALY)
 
-        # 3. Rule agreement boost
+        # === COMPONENT 3: RULE CONFIRMATION (0-15) ===
+        # Boost if rule-based detectors agree with the classification
         rule_boost = 0.0
+        triggered_rules = 0
         for detection in rule_detections.values():
             if detection:
                 rule_boost += detection.confidence * 5
-        rule_boost = min(15, rule_boost)
-        risk += rule_boost
+                triggered_rules += 1
+        rule_confirmation = min(15, rule_boost)
 
-        # 4. Multi-detector boost
+        # === COMPONENT 4: DETECTOR DIVERSITY (0-5) ===
+        # Reward for multiple independent detection methods agreeing
         num_detectors = sum(1 for d in rule_detections.values() if d)
+        
+        # Count anomaly and ML as additional detectors
         if anomaly_result['is_anomaly']:
             num_detectors += 1
         if ml_result['confidence'] >= 0.7 and ml_result['threat_class'] != "NORMAL":
             num_detectors += 1
 
         if num_detectors >= 4:
-            risk += 5
+            detector_diversity = 5
         elif num_detectors == 3:
-            risk += 4
+            detector_diversity = 4
         elif num_detectors == 2:
-            risk += 2
+            detector_diversity = 2
+        elif num_detectors == 1:
+            detector_diversity = 1
+        # else: detector_diversity = 0 (only one method detected something)
 
-        # Cap at 100
-        return int(min(100, risk))
+        # === TOTAL SCORE ===
+        total_risk = base_risk + anomaly_boost + rule_confirmation + detector_diversity
+
+        # Cap at 100 and return as int
+        total_risk = min(100, total_risk)
+
+        # Return total score with component breakdown
+        breakdown: Dict[str, int] = {
+            'base_risk': int(base_risk),
+            'anomaly_boost': anomaly_boost,
+            'rule_confirmation': rule_confirmation,
+            'detector_diversity': detector_diversity
+        }
+
+        return int(total_risk), breakdown
 
     def _determine_severity(self, risk_score: int, threat_class: str) -> str:
         """
@@ -428,7 +469,7 @@ class HybridDetectionEngine:
         else:
             return "Low"
 
-    def _build_evidence(self,
+    def _generate_explanations(self,
                        ml_result: Dict[str, Any],
                        anomaly_result: Dict[str, Any],
                        rule_detections: Dict[str, Optional[Detection]],

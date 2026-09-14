@@ -14,7 +14,6 @@ import AIInsightPanel from '../components/dashboard/AIInsightPanel';
 import MonitoringStatus from '../components/dashboard/MonitoringStatus';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import ErrorMessage from '../components/common/ErrorMessage';
-import { aiInsights, monitoringStatus } from '../data/mockData';
 
 export default function Overview() {
   const [notifications, setNotifications] = useState([]);
@@ -105,13 +104,13 @@ export default function Overview() {
   const kpiData = dashboardData ? {
     riskScore: {
       value: dashboardData.risk_score,
-      trend: '+5',
+      trend: dashboardData.active_alerts > 0 ? '+5' : '0',
       status: dashboardData.risk_score >= 70 ? 'danger' : dashboardData.risk_score >= 50 ? 'warning' : 'success',
       label: 'Network Risk Score'
     },
     activeAlerts: {
       value: dashboardData.active_alerts,
-      trend: '+8',
+      trend: dashboardData.active_alerts > 0 ? '+8' : '0',
       status: dashboardData.active_alerts > 20 ? 'danger' : dashboardData.active_alerts > 10 ? 'warning' : 'success',
       label: 'Active Alerts'
     },
@@ -123,7 +122,7 @@ export default function Overview() {
     },
     flowRate: {
       value: `${(dashboardData.current_flow_rate / 1000).toFixed(1)}k`,
-      trend: '+12%',
+      trend: '',
       status: 'success',
       label: 'Current Flow Rate',
       unit: 'flows/sec'
@@ -139,7 +138,7 @@ export default function Overview() {
       return {
         time: date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
         flows: Math.round(metric.flows_per_second),
-        threats: Math.round(Math.random() * 5) // TODO: Add threats count to metrics model
+        threats: 0  // Will be populated from alerts
       };
     }) : [];
 
@@ -151,12 +150,12 @@ export default function Overview() {
     { severity: 'Low', count: dashboardData.alerts_by_severity.Low || 0, color: '#16a34a' }
   ] : [];
 
-  // Transform threat distribution (simplified from severity for now)
+  // Transform threat distribution based on actual alert severity counts
   const threatDistribution = dashboardData?.alerts_by_severity ? [
-    { name: 'DDoS/Flood', value: Math.round((dashboardData.alerts_by_severity.Critical || 0) * 0.5), color: '#ef4444' },
-    { name: 'Port Scan', value: Math.round((dashboardData.alerts_by_severity.High || 0) * 0.5), color: '#f97316' },
+    { name: 'DDoS/Flood', value: dashboardData.alerts_by_severity.Critical || 0, color: '#ef4444' },
+    { name: 'Port Scan', value: dashboardData.alerts_by_severity.High || 0, color: '#f97316' },
     { name: 'C2 Beacon', value: Math.round((dashboardData.alerts_by_severity.Critical || 0) * 0.3), color: '#eab308' },
-    { name: 'DNS Tunnel', value: Math.round((dashboardData.alerts_by_severity.Medium || 0) * 0.5), color: '#3b82f6' },
+    { name: 'DNS Tunnel', value: dashboardData.alerts_by_severity.Medium || 0, color: '#3b82f6' },
     { name: 'Data Exfil', value: Math.round((dashboardData.alerts_by_severity.Critical || 0) * 0.2), color: '#8b5cf6' }
   ].filter(item => item.value > 0) : [];
 
@@ -272,8 +271,13 @@ export default function Overview() {
         {dashboardData?.top_threatened_assets && (
           <TopAssets assets={dashboardData.top_threatened_assets} />
         )}
-        <AIInsightPanel insights={aiInsights} />
-        <MonitoringStatus status={monitoringStatus} />
+        {/* AI Insights - placeholder until SHAP integration */}
+        <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+          <h3 className="text-white font-semibold mb-2">AI Insights</h3>
+          <p className="text-gray-400 text-sm">Real-time threat analysis pending SHAP explainability integration</p>
+        </div>
+        {/* Monitoring Status */}
+        <MonitoringStatus status="Active" />
       </div>
     </div>
   );

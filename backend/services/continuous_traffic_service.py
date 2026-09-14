@@ -5,13 +5,12 @@ This service runs a background simulation that continuously generates
 network flows, feeds them into the detection pipeline, and creates
 real-time alerts and metrics across the entire system.
 """
+import asyncio
 import threading
 import time
 import random
-import asyncio
 from datetime import datetime, timedelta
 from typing import Optional
-from sqlalchemy.orm import Session
 
 from database.base import SessionLocal
 from database.models import Alert, AlertSeverity, AlertStatus, NetworkMetric
@@ -41,7 +40,7 @@ class ContinuousTrafficService:
         self.scenario_start_time = None
         self.flows_processed = 0
         self.alerts_generated = 0
-        self.event_loop = None  # Will be set to FastAPI's event loop
+        self.event_loop: Optional[asyncio.AbstractEventLoop] = None  # Will be set to FastAPI's event loop
 
         # Scenario rotation for realistic demo
         self.scenarios = [
