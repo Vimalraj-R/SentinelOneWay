@@ -10,7 +10,9 @@
  */
 import { useState, useEffect, useCallback, useRef } from 'react';
 
-const WS_URL = 'ws://localhost:8000/ws/alerts';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+const WS_URL = import.meta.env.VITE_WS_URL ||
+  `${API_BASE_URL.replace(/^http/, 'ws')}/ws/alerts`;
 const RECONNECT_DELAY = 3000; // 3 seconds
 const MAX_RECONNECT_ATTEMPTS = 10;
 

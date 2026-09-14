@@ -11,3 +11,5 @@ services:
         value: sqlite:///./sentineloneway.db
       - key: PYTHONUNBUFFERED
         value: 1
+      - key: CORS_ORIGINS
+        sync: false
