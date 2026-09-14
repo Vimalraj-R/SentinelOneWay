@@ -12,5 +12,4 @@ services:
       - key: PYTHONUNBUFFERED
         value: 1
       - key: CORS_ALLOWED_ORIGINS
-        sync: false
-        value: https://sentineloneway-frontend.onrender.com
+        value: https://sentineloneway-frontend.onrender.com,https://sentineloneway-backend.onrender.com
