@@ -25,6 +25,9 @@ from websocket.manager import heartbeat_loop
 
 # Import continuous traffic service
 from services.continuous_traffic_service import continuous_traffic_service
+from database.base import Base, engine
+from database import models  # noqa: F401
+from database import incident_models  # noqa: F401
 
 # Create FastAPI application
 app = FastAPI(
@@ -75,6 +78,9 @@ app.include_router(continuous_traffic_router)
 @app.on_event("startup")
 async def startup_event():
     """Start background tasks on application startup."""
+    # Render starts with a fresh filesystem, so create the SQLite schema first.
+    Base.metadata.create_all(bind=engine)
+
     # Start WebSocket heartbeat loop
     asyncio.create_task(heartbeat_loop())
 
