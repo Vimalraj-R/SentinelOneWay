@@ -42,26 +42,22 @@ app = FastAPI(
 )
 
 # Configure CORS for React frontend
-cors_origins = [
-    origin.strip()
-    for origin in os.getenv("CORS_ORIGINS", "").split(",")
-    if origin.strip()
-]
+cors_origins = []
+# Add allowed origins from environment variable, comma-separated
+env_origins = os.getenv("CORS_ALLOWED_ORIGINS", "")
+if env_origins:
+    cors_origins = [origin.strip() for origin in env_origins.split(",") if origin.strip()]
+# Always include localhost for development
 cors_origins.extend([
-    "https://sentinel-one-way-mvp.vercel.app",
-    "https://sentinel-one-way-mvp-git-main-vimalraj-rs-projects.vercel.app",
     "http://localhost:5173",
     "http://localhost:5174",
-    "http://localhost:3000",
     "http://127.0.0.1:5173",
     "http://127.0.0.1:5174",
-    "http://127.0.0.1:3000",
 ])
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
-    allow_origin_regex=r"https://sentinel-one-way(?:-mvp)?(?:-[a-z0-9-]+)*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],  # Allow all HTTP methods
     allow_headers=["*"],  # Allow all headers
