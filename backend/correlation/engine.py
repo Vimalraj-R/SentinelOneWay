@@ -34,7 +34,7 @@ class CorrelationEngine:
     # Correlation configuration
     MAX_TIME_GAP_MINUTES = 60  # Max time between related alerts
     MIN_ALERTS_FOR_INCIDENT = 2  # Minimum alerts to form incident
-    MIN_CORRELATION_SCORE = 0.6  # Minimum correlation confidence
+    MIN_CORRELATION_SCORE = 0.5  # Minimum correlation confidence
 
     # Attack stage mappings
     THREAT_TO_STAGE = {

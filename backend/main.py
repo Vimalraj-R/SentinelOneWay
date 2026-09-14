@@ -25,6 +25,7 @@ from websocket.manager import heartbeat_loop
 
 # Import continuous traffic service
 from services.continuous_traffic_service import continuous_traffic_service
+from services.incident_service import IncidentService
 from database.base import Base, engine, SessionLocal
 from database import models  # noqa: F401
 from database import incident_models  # noqa: F401
@@ -92,6 +93,13 @@ async def startup_event():
     try:
         if db.query(Alert).count() == 0:
             seed_database()
+    finally:
+        db.close()
+
+    # Build initial attack timelines from the seeded or persisted alerts.
+    db = SessionLocal()
+    try:
+        IncidentService.correlate_recent_alerts(db, hours=24)
     finally:
         db.close()
 

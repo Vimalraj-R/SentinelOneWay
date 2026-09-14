@@ -18,6 +18,7 @@ from database.models import Alert, AlertSeverity, AlertStatus, NetworkMetric
 from database.incident_models import Incident
 from simulator.simulation_manager import simulation_manager
 from websocket.manager import manager as websocket_manager
+from services.incident_service import IncidentService
 
 
 class ContinuousTrafficService:
@@ -186,6 +187,9 @@ class ContinuousTrafficService:
             db.add(alert)
             db.commit()
             db.refresh(alert)  # Get the ID and updated fields
+
+            # Rebuild recent incidents so the Attack Timeline reflects live alerts.
+            IncidentService.correlate_recent_alerts(db, hours=24)
 
             self.alerts_generated += 1
             print(f"   [ALERT] #{self.alerts_generated}: {threat_class} ({severity.value})")

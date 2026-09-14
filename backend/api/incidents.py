@@ -28,6 +28,8 @@ async def get_incidents(
         severity: Filter by severity (Critical, High, Medium, Low)
         status: Filter by status (Active, Investigating, Contained, Resolved)
     """
+    # Keep the timeline current even when alerts were generated after startup.
+    IncidentService.correlate_recent_alerts(db, hours=24)
     incidents, total = IncidentService.get_incidents(
         db, skip, limit, severity, status
     )
