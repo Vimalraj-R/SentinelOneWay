@@ -25,9 +25,11 @@ from websocket.manager import heartbeat_loop
 
 # Import continuous traffic service
 from services.continuous_traffic_service import continuous_traffic_service
-from database.base import Base, engine
+from database.base import Base, engine, SessionLocal
 from database import models  # noqa: F401
 from database import incident_models  # noqa: F401
+from database.models import Alert
+from utils.seed_data import seed_database
 
 # Create FastAPI application
 app = FastAPI(
@@ -83,6 +85,15 @@ async def startup_event():
     """Start background tasks on application startup."""
     # Render starts with a fresh filesystem, so create the SQLite schema first.
     Base.metadata.create_all(bind=engine)
+
+    # Populate an empty deployment with the documented MVP data set so every
+    # dashboard feature is visible immediately on first launch.
+    db = SessionLocal()
+    try:
+        if db.query(Alert).count() == 0:
+            seed_database()
+    finally:
+        db.close()
 
     # Start WebSocket heartbeat loop
     asyncio.create_task(heartbeat_loop())

@@ -21,9 +21,14 @@ export const useWebSocket = (onMessage) => {
   const [isConnected, setIsConnected] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState('disconnected'); // 'connected', 'connecting', 'disconnected', 'error'
   const ws = useRef(null);
+  const onMessageRef = useRef(onMessage);
   const reconnectAttempts = useRef(0);
   const reconnectTimeout = useRef(null);
   const shouldReconnect = useRef(true);
+
+  useEffect(() => {
+    onMessageRef.current = onMessage;
+  }, [onMessage]);
 
   const connect = useCallback(() => {
     if (ws.current?.readyState === WebSocket.OPEN) {
@@ -63,8 +68,8 @@ export const useWebSocket = (onMessage) => {
 
             case 'alert':
               console.log('Alert received:', message.data);
-              if (onMessage) {
-                onMessage(message.data);
+              if (onMessageRef.current) {
+                onMessageRef.current(message.data);
               }
               break;
 
@@ -117,7 +122,7 @@ export const useWebSocket = (onMessage) => {
       console.error('Error creating WebSocket:', error);
       setConnectionStatus('error');
     }
-  }, [onMessage]);
+  }, []);
 
   const disconnect = useCallback(() => {
     console.log('Disconnecting WebSocket...');
