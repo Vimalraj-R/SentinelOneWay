@@ -1,14 +1,40 @@
 /**
  * Simulation Lab - Safe demonstration environment
+ *
+ * Full integration with the backend simulation service:
+ * - POST /api/simulation/start   (starts synthetic flow generation)
+ * - POST /api/simulation/stop    (stops and returns run statistics)
+ * - GET  /api/simulation/status  (running state)
+ * - GET  /api/simulation/metrics (live detection metrics)
  */
-import { useState } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Play, Square, AlertTriangle, Activity, Zap, Shield, TrendingUp } from 'lucide-react';
+import { fetchApi } from '../services/api';
+import LoadingSpinner from '../components/common/LoadingSpinner';
+import ErrorMessage from '../components/common/ErrorMessage';
+
+const SCENARIO_MAP = {
+  normal: 'normal',
+  syn_flood: 'syn_flood',
+  port_scan: 'port_scan',
+  c2_beacon: 'c2_beacon',
+  dns_tunnel: 'dns_tunnel',
+  data_exfil: 'data_exfiltration' // UI id -> backend scenario name
+};
 
 export default function SimulationLab() {
   const [selectedScenario, setSelectedScenario] = useState('syn_flood');
   const [intensity, setIntensity] = useState(0.5);
   const [duration, setDuration] = useState(30);
   const [isRunning, setIsRunning] = useState(false);
+  const [error, setError] = useState(null);
+  const [status, setStatus] = useState(null);
+  const [metrics, setMetrics] = useState(null);
+  const [states, setStates] = useState({ starting: false, stopping: false });
+  const [runStats, setRunStats] = useState(null);
+
+  const metricsTimer = useRef(null);
+  const autoStopTimer = useRef(null);
 
   const scenarios = [
     { id: 'normal', name: 'Normal Traffic', description: 'Benign HTTP, DNS, and application traffic', icon: Activity, color: 'green' },
@@ -31,20 +57,105 @@ export default function SimulationLab() {
     return colors[color] || colors.green;
   };
 
-  const getIntensityLabel = () => {
-    if (intensity < 0.33) return 'Low';
-    if (intensity < 0.67) return 'Medium';
+  const getIntensityLabel = (value = intensity) => {
+    if (value < 0.33) return 'Low';
+    if (value < 0.67) return 'Medium';
     return 'High';
   };
 
-  const startSimulation = () => {
-    setIsRunning(true);
-    setTimeout(() => setIsRunning(false), duration * 1000);
+  // Load current simulation state on mount
+  useEffect(() => {
+    const loadStatus = async () => {
+      try {
+        const s = await fetchApi('/api/simulation/status');
+        setStatus(s);
+        if (s.state === 'running') {
+          setIsRunning(true);
+          setSelectedScenario(s.scenario || 'normal');
+          setIntensity(s.intensity ?? 0.5);
+        }
+      } catch {
+        // Backend may be starting up; UI stays in ready state.
+      }
+    };
+    loadStatus();
+    return () => {
+      stopPolling();
+      if (autoStopTimer.current) clearTimeout(autoStopTimer.current);
+    };
+  }, []);
+
+  const stopPolling = useCallback(() => {
+    if (metricsTimer.current) {
+      clearInterval(metricsTimer.current);
+      metricsTimer.current = null;
+    }
+  }, []);
+
+  const pollMetrics = useCallback(() => {
+    if (metricsTimer.current) clearInterval(metricsTimer.current);
+    metricsTimer.current = setInterval(async () => {
+      try {
+        const m = await fetchApi('/api/simulation/metrics');
+        setMetrics(m);
+        setStatus(prev => ({ ...prev, is_running: m.is_running }));
+        if (!m.is_running) {
+          stopPolling();
+          setIsRunning(false);
+        }
+      } catch {
+        // Ignore transient polling failures; next tick retries.
+      }
+    }, 2000);
+  }, [stopPolling]);
+
+  const startSimulation = async () => {
+    setError(null);
+    setRunStats(null);
+    setStates(prev => ({ ...prev, starting: true }));
+    try {
+      const res = await fetchApi('/api/simulation/start', {
+        method: 'POST',
+        body: JSON.stringify({
+          scenario: SCENARIO_MAP[selectedScenario] || selectedScenario,
+          intensity
+        })
+      });
+      setIsRunning(true);
+      setStatus({ state: 'running', scenario: res.scenario, intensity: res.intensity });
+      pollMetrics();
+
+      // Auto-stop after the selected duration
+      if (autoStopTimer.current) clearTimeout(autoStopTimer.current);
+      autoStopTimer.current = setTimeout(() => {
+        stopSimulation();
+      }, duration * 1000);
+    } catch (err) {
+      setError(err.message || 'Failed to start simulation');
+    } finally {
+      setStates(prev => ({ ...prev, starting: false }));
+    }
   };
 
-  const stopSimulation = () => {
-    setIsRunning(false);
+  const stopSimulation = async () => {
+    if (autoStopTimer.current) clearTimeout(autoStopTimer.current);
+    setStates(prev => ({ ...prev, stopping: true }));
+    try {
+      const res = await fetchApi('/api/simulation/stop', { method: 'POST' });
+      setRunStats(res);
+      stopPolling();
+      setMetrics(null);
+      setIsRunning(false);
+    } catch (err) {
+      setError(err.message || 'Failed to stop simulation');
+      stopPolling();
+      setIsRunning(false);
+    } finally {
+      setStates(prev => ({ ...prev, stopping: false }));
+    }
   };
+
+  const isBusy = states.starting || states.stopping;
 
   return (
     <div className="p-6 space-y-6">
@@ -57,7 +168,8 @@ export default function SimulationLab() {
               Simulation Mode — Synthetic Traffic
             </div>
             <div className="text-sm text-yellow-300">
-              All traffic is synthetically generated in-memory. No actual malicious packets are transmitted over the network.
+              Synthetic flows are generated in-memory and processed by the real detection pipeline.
+              No actual malicious packets are transmitted over the network.
             </div>
           </div>
         </div>
@@ -70,6 +182,12 @@ export default function SimulationLab() {
           Test and demonstrate the detection pipeline with synthetic attack scenarios
         </p>
       </div>
+
+      {error && (
+        <div className="bg-red-500/10 border border-red-500/40 rounded-lg p-4">
+          <p className="text-red-300 text-sm">{error}</p>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Configuration Panel */}
@@ -156,18 +274,32 @@ export default function SimulationLab() {
             {!isRunning ? (
               <button
                 onClick={startSimulation}
-                className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+                disabled={states.starting}
+                className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium rounded-lg transition-colors"
               >
-                <Play className="w-5 h-5" />
-                Start Simulation
+                {states.starting ? (
+                  <LoadingSpinner size="sm" message="Starting..." />
+                ) : (
+                  <>
+                    <Play className="w-5 h-5" />
+                    Start Simulation
+                  </>
+                )}
               </button>
             ) : (
               <button
                 onClick={stopSimulation}
-                className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors"
+                disabled={states.stopping}
+                className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-medium rounded-lg transition-colors"
               >
-                <Square className="w-5 h-5" />
-                Stop Simulation
+                {states.stopping ? (
+                  <LoadingSpinner size="sm" message="Stopping..." />
+                ) : (
+                  <>
+                    <Square className="w-5 h-5" />
+                    Stop Simulation
+                  </>
+                )}
               </button>
             )}
           </div>
@@ -178,18 +310,34 @@ export default function SimulationLab() {
           {/* Status */}
           <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
             <h2 className="text-xl font-semibold text-white mb-4">
-              {isRunning ? 'Simulation Running' : 'Ready to Simulate'}
+              {isRunning ? 'Simulation Running' : status?.state === 'running' ? 'Simulation Running' : 'Ready to Simulate'}
             </h2>
             <div className="space-y-2">
               <p className="text-gray-400">
-                <strong className="text-white">Scenario:</strong> {currentScenario?.name}
+                <strong className="text-white">Scenario:</strong> {currentScenario?.name || status?.scenario || '—'}
               </p>
               <p className="text-gray-400">
-                <strong className="text-white">Intensity:</strong> {getIntensityLabel()}
+                <strong className="text-white">Intensity:</strong> {getIntensityLabel(status?.intensity ?? intensity)}
               </p>
               <p className="text-gray-400">
-                <strong className="text-white">Duration:</strong> {duration} seconds
+                <strong className="text-white">Status:</strong>{' '}
+                <span className={status?.state === 'running' || isRunning ? 'text-green-400' : 'text-gray-300'}>
+                  {isRunning ? 'Running' : status?.state || 'Idle'}
+                </span>
               </p>
+              {runStats && (
+                <div className="mt-2 pt-2 border-t border-gray-800 text-sm space-y-1">
+                  <p className="text-gray-400">
+                    <strong className="text-white">Run duration:</strong> {runStats.duration_seconds?.toFixed(1) ?? '—'}s
+                  </p>
+                  <p className="text-gray-400">
+                    <strong className="text-white">Flows generated:</strong> {runStats.total_flows_generated ?? '—'}
+                  </p>
+                  <p className="text-gray-400">
+                    <strong className="text-white">Flows available:</strong> {runStats.flows_available ?? '—'}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -198,27 +346,32 @@ export default function SimulationLab() {
             <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
               <div className="text-gray-400 text-sm mb-2">Synthetic Flows Generated</div>
               <div className="text-3xl font-bold text-white">
-                {isRunning ? Math.floor(Math.random() * 1000) : 0}
+                {(isRunning ? metrics?.flows_generated : (runStats?.total_flows_generated ?? metrics?.flows_generated) ?? 0).toLocaleString()}
               </div>
             </div>
             <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-              <div className="text-gray-400 text-sm mb-2">Test Threats Detected</div>
+              <div className="text-gray-400 text-sm mb-2">Simulation Flows in Memory</div>
               <div className="text-3xl font-bold text-white">
-                {isRunning ? Math.floor(Math.random() * 50) : 0}
+                {(status?.flows_in_memory ?? 0).toLocaleString()}
               </div>
             </div>
             <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
               <div className="text-gray-400 text-sm mb-2">Avg Detection Latency</div>
               <div className="text-3xl font-bold text-white">
-                {isRunning ? (5 + Math.random() * 10).toFixed(1) : 0}
-                <span className="text-base text-gray-400 ml-1">ms</span>
+                {isRunning && metrics?.avg_latency != null ? (
+                  <>
+                    {metrics.avg_latency.toFixed(1)}
+                    <span className="text-base text-gray-400 ml-1">ms</span>
+                  </>
+                ) : (
+                  '—'
+                )}
               </div>
             </div>
             <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-              <div className="text-gray-400 text-sm mb-2">Current Risk Score</div>
+              <div className="text-gray-400 text-sm mb-2">Threats Flagged</div>
               <div className="text-3xl font-bold text-white">
-                {isRunning ? Math.floor(50 + Math.random() * 50) : 0}
-                <span className="text-base text-gray-400 ml-1">/100</span>
+                {metrics?.threats_detected ?? 0}
               </div>
             </div>
           </div>

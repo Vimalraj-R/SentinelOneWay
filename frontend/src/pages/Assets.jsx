@@ -1,19 +1,26 @@
 /**
  * Assets Page - Network asset inventory
+ *
+ * Loads real assets from GET /api/assets and displays risk profiling.
  */
+import { useState } from 'react';
 import { Server, Shield, AlertTriangle, Search } from 'lucide-react';
+import { assetsApi } from '../services/api';
+import { useApi } from '../hooks/useApi';
+import LoadingSpinner from '../components/common/LoadingSpinner';
+import ErrorMessage from '../components/common/ErrorMessage';
+import EmptyState from '../components/common/EmptyState';
+
+const RISK_LEVELS = ['Critical', 'High', 'Medium', 'Low'];
 
 export default function Assets() {
-  const assets = [
-    { id: 1, ip: '192.168.1.10', hostname: 'web-server-01', type: 'Server', risk_level: 'Medium', alerts: 3, last_seen: '2 min ago' },
-    { id: 2, ip: '192.168.1.20', hostname: 'db-primary', type: 'Database', risk_level: 'High', alerts: 5, last_seen: '1 min ago' },
-    { id: 3, ip: '192.168.1.30', hostname: 'app-server-01', type: 'Application', risk_level: 'Low', alerts: 0, last_seen: '5 min ago' },
-    { id: 4, ip: '192.168.1.40', hostname: 'firewall-01', type: 'Network', risk_level: 'Critical', alerts: 12, last_seen: 'Just now' },
-    { id: 5, ip: '192.168.1.50', hostname: 'workstation-05', type: 'Workstation', risk_level: 'Medium', alerts: 2, last_seen: '10 min ago' },
-    { id: 6, ip: '192.168.1.60', hostname: 'mail-server', type: 'Server', risk_level: 'Low', alerts: 1, last_seen: '3 min ago' },
-    { id: 7, ip: '192.168.1.70', hostname: 'backup-server', type: 'Storage', risk_level: 'Low', alerts: 0, last_seen: '15 min ago' },
-    { id: 8, ip: '192.168.1.80', hostname: 'dns-server', type: 'Infrastructure', risk_level: 'Medium', alerts: 4, last_seen: '2 min ago' },
-  ];
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const { data, loading, error, refetch } = useApi(() =>
+    assetsApi.getAssets({ limit: 250 })
+  );
+
+  const assets = data?.assets || [];
 
   const getRiskColor = (risk) => {
     switch (risk) {
@@ -34,6 +41,48 @@ export default function Assets() {
       default: return 'text-gray-400';
     }
   };
+
+  const getTypeLabel = (type) => {
+    const map = {
+      server: 'Server',
+      workstation: 'Workstation',
+      network_device: 'Network Device',
+      database: 'Database',
+      application: 'Application',
+      storage: 'Storage',
+      infrastructure: 'Infrastructure'
+    };
+    return map[type] || type || 'Unknown';
+  };
+
+  const filteredAssets = assets.filter(asset => {
+    const query = searchTerm.toLowerCase().trim();
+    if (!query) return true;
+    return (
+      (asset.hostname || '').toLowerCase().includes(query) ||
+      (asset.ip_address || '').toLowerCase().includes(query) ||
+      (asset.criticality || '').toLowerCase().includes(query)
+    );
+  });
+
+  const countByRisk = (level) =>
+    assets.filter(a => (a.criticality || '').toLowerCase() === level.toLowerCase()).length;
+
+  if (loading && !data) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <LoadingSpinner size="lg" message="Loading network assets..." />
+      </div>
+    );
+  }
+
+  if (error && !data) {
+    return (
+      <div className="p-6">
+        <ErrorMessage message={error} onRetry={refetch} />
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6">
@@ -69,80 +118,99 @@ export default function Assets() {
         <div className="bg-gray-800 rounded-lg p-4 border border-red-500/30">
           <div className="text-gray-400 text-sm">Critical Risk</div>
           <div className="text-2xl font-bold text-red-400 mt-1">
-            {assets.filter(a => a.risk_level === 'Critical').length}
+            {countByRisk('Critical')}
           </div>
         </div>
         <div className="bg-gray-800 rounded-lg p-4 border border-orange-500/30">
           <div className="text-gray-400 text-sm">High Risk</div>
           <div className="text-2xl font-bold text-orange-400 mt-1">
-            {assets.filter(a => a.risk_level === 'High').length}
+            {countByRisk('High')}
           </div>
         </div>
         <div className="bg-gray-800 rounded-lg p-4 border border-blue-500/30">
           <div className="text-gray-400 text-sm">Active Monitoring</div>
-          <div className="text-2xl font-bold text-blue-400 mt-1">
-            {assets.length}
-          </div>
+          <div className="text-2xl font-bold text-blue-400 mt-1">{assets.length}</div>
         </div>
       </div>
 
-      {/* Assets Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {assets.map((asset) => (
-          <div
-            key={asset.id}
-            className={`bg-gray-800 rounded-lg p-5 border hover:border-blue-500 transition-colors cursor-pointer ${getRiskColor(asset.risk_level)}`}
-          >
-            {/* Header */}
-            <div className="flex items-start justify-between mb-3">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center">
-                  <Server className="w-5 h-5 text-purple-400" />
-                </div>
-                <div>
-                  <h3 className="text-white font-semibold">{asset.hostname}</h3>
-                  <p className="text-gray-400 text-sm">{asset.ip}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Details */}
-            <div className="space-y-2 mb-3">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-400">Type:</span>
-                <span className="text-white font-medium">{asset.type}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-400">Last Seen:</span>
-                <span className="text-white font-medium">{asset.last_seen}</span>
-              </div>
-            </div>
-
-            {/* Risk Badge */}
-            <div className="flex items-center justify-between pt-3 border-t border-gray-700">
-              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border ${getRiskColor(asset.risk_level)}`}>
-                <Shield className="w-4 h-4" />
-                <span className={`text-sm font-medium ${getRiskTextColor(asset.risk_level)}`}>
-                  {asset.risk_level} Risk
-                </span>
-              </div>
-
-              {asset.alerts > 0 && (
-                <div className="flex items-center gap-1 text-red-400">
-                  <AlertTriangle className="w-4 h-4" />
-                  <span className="text-sm font-medium">{asset.alerts} alerts</span>
-                </div>
-              )}
-            </div>
+      {/* Search */}
+      {assets.length > 0 && (
+        <div className="max-w-md">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search by hostname, IP, or risk level..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+            />
           </div>
-        ))}
-      </div>
+        </div>
+      )}
+
+      {/* Assets Grid */}
+      {filteredAssets.length === 0 ? (
+        <EmptyState
+          type="assets"
+          title={searchTerm ? 'No Matching Assets' : 'No Assets Found'}
+          description={searchTerm
+            ? 'No assets match your search. Try a different filter.'
+            : 'Assets are automatically discovered through passive network traffic analysis.'}
+        />
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredAssets.map((asset) => (
+            <div
+              key={asset.id}
+              className={`bg-gray-800 rounded-lg p-5 border transition-colors ${getRiskColor(asset.criticality)}`}
+            >
+              {/* Header */}
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center">
+                    <Server className="w-5 h-5 text-purple-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-white font-semibold">{asset.hostname || 'Unknown'}</h3>
+                    <p className="text-gray-400 text-sm">{asset.ip_address}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Details */}
+              <div className="space-y-2 mb-3">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-400">Type:</span>
+                  <span className="text-white font-medium">{getTypeLabel(asset.asset_type)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-400">Risk Score:</span>
+                  <span className={`font-medium ${getRiskTextColor(asset.criticality)}`}>
+                    {asset.risk_score}/100
+                  </span>
+                </div>
+              </div>
+
+              {/* Risk Badge */}
+              <div className="flex items-center justify-between pt-3 border-t border-gray-700">
+                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border ${getRiskColor(asset.criticality)}`}>
+                  <Shield className="w-4 h-4" />
+                  <span className={`text-sm font-medium ${getRiskTextColor(asset.criticality)}`}>
+                    {asset.criticality} Risk
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Info Banner */}
       <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
         <p className="text-blue-300 text-sm">
           <strong>Asset Discovery:</strong> Assets are automatically discovered through passive network traffic analysis.
-          No active scanning or probing is performed.
+          No active scanning or probing is performed. Criticality and risk scores are computed by the detection engine.
         </p>
       </div>
     </div>
