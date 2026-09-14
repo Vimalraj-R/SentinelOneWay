@@ -54,20 +54,25 @@ def get_dashboard_summary(db: Session = Depends(get_db)):
     # Get current flow rate
     current_metric = MetricService.get_current_metric(db)
     current_flow_rate = current_metric.flows_per_second if current_metric else 0.0
+    average_flow_rate = MetricService.get_average_flow_rate(db, hours=24)
 
     # Get top threatened assets
     top_assets = AssetService.get_top_threatened_assets(db, limit=5)
 
-    # Use current alert risk rather than a fixed baseline so a quiet network
-    # does not appear risky and newly generated alerts change the score.
+    # Estimate risk from both observed threats and traffic deviation. A rate
+    # close to the recent baseline contributes little; an unusual spike or
+    # drop contributes more without treating normal traffic as a threat.
+    alert_risk = 0
     if all_alerts_data:
         average_alert_risk = sum(alert.risk_score for alert in all_alerts_data) / len(all_alerts_data)
-        risk_score = min(
-            100,
-            round(average_alert_risk + (critical_threats * 5))
-        )
-    else:
-        risk_score = 0
+        alert_risk = min(60, round((average_alert_risk * 0.6) + (critical_threats * 5)))
+
+    traffic_risk = 0
+    if average_flow_rate > 0 and current_flow_rate > 0:
+        traffic_deviation = abs(current_flow_rate - average_flow_rate) / average_flow_rate
+        traffic_risk = min(40, round(traffic_deviation * 100))
+
+    risk_score = min(100, alert_risk + traffic_risk)
 
     return DashboardSummary(
         risk_score=risk_score,
