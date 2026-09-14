@@ -4,6 +4,7 @@ Pydantic schemas for Asset API endpoints.
 from pydantic import BaseModel, Field
 from datetime import datetime
 from enum import Enum
+from typing import Optional
 
 
 class AssetCriticality(str, Enum):
@@ -42,7 +43,3 @@ class AssetListResponse(BaseModel):
     """Schema for asset list responses."""
     total: int
     assets: list[AssetResponse]
-
-
-# Import Optional for type hints
-from typing import Optional
