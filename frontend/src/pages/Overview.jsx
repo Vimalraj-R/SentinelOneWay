@@ -26,9 +26,21 @@ export default function Overview() {
   );
 
   // Fetch metrics history for traffic chart
-  const { data: metricsHistory, loading: metricsLoading } = useApi(
+  const { data: metricsHistory, loading: metricsLoading, refetch: refetchMetrics } = useApi(
     () => metricsApi.getHistory({ hours: 24, limit: 24 })
   );
+
+  // Keep the dashboard aligned with the backend's continuous traffic service.
+  useEffect(() => {
+    const refreshDashboard = setInterval(() => {
+      refetchDashboard();
+      refetchMetrics();
+    }, 5000);
+
+    return () => clearInterval(refreshDashboard);
+    // The API hook functions are intentionally used by this stable polling loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Handle incoming WebSocket alerts
   const handleWebSocketMessage = useCallback((alert) => {

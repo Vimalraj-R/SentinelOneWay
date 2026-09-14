@@ -58,14 +58,16 @@ def get_dashboard_summary(db: Session = Depends(get_db)):
     # Get top threatened assets
     top_assets = AssetService.get_top_threatened_assets(db, limit=5)
 
-    # Calculate overall risk score (simplified)
-    # In production, this would use a more sophisticated algorithm
-    risk_score = min(
-        40 +  # Base risk
-        (critical_threats * 15) +  # Critical threats add significant risk
-        (active_alerts * 2),  # Each active alert adds small risk
-        100  # Cap at 100
-    )
+    # Use current alert risk rather than a fixed baseline so a quiet network
+    # does not appear risky and newly generated alerts change the score.
+    if all_alerts_data:
+        average_alert_risk = sum(alert.risk_score for alert in all_alerts_data) / len(all_alerts_data)
+        risk_score = min(
+            100,
+            round(average_alert_risk + (critical_threats * 5))
+        )
+    else:
+        risk_score = 0
 
     return DashboardSummary(
         risk_score=risk_score,
