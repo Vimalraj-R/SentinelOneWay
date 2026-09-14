@@ -151,9 +151,6 @@ Fill in these settings:
 - Enter: `frontend`
 - Click **"Continue"**
 
-If the Vercel project is left at the repository root, the committed `vercel.json`
-also supports deployment by installing and building from `frontend` automatically.
-
 **Build Settings:** (should auto-fill, verify these)
 - **Build Command:** `npm run build`
 - **Output Directory:** `dist`
